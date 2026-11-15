@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Otaku Zone</string>
+    <string name="channel_airing_name">Anime Airing Updates</string>
+    <string name="channel_airing_description">Notifications when new episodes of your watchlisted anime air</string>
+</resources>
