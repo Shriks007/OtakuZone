@@ -3,9 +3,10 @@ package com.otakuzone.app.ui.screens.player
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,19 +19,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -46,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -54,7 +60,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.otakuzone.app.OtakuZoneApplication
@@ -62,17 +67,22 @@ import com.otakuzone.app.data.local.WatchProgressEntity
 import com.otakuzone.app.data.models.AudioMode
 import com.otakuzone.app.data.models.StreamServer
 import com.otakuzone.app.ui.components.ServerPickerBottomSheet
-import com.otakuzone.app.ui.theme.AccentError
-import com.otakuzone.app.ui.theme.AccentPrimary
-import com.otakuzone.app.ui.theme.DarkBackground
-import com.otakuzone.app.ui.theme.TextMuted
-import com.otakuzone.app.ui.theme.TextPrimary
-import com.otakuzone.app.ui.theme.TextSecondary
+import com.otakuzone.app.ui.theme.AccentWhite
+import com.otakuzone.app.ui.theme.Background
+import com.otakuzone.app.ui.theme.BorderColor
+import com.otakuzone.app.ui.theme.Danger
+import com.otakuzone.app.ui.theme.DubBadgeColor
+import com.otakuzone.app.ui.theme.Fg
+import com.otakuzone.app.ui.theme.FgMuted
+import com.otakuzone.app.ui.theme.SubBadgeColor
+import com.otakuzone.app.ui.theme.SurfaceCard
+import com.otakuzone.app.ui.theme.SurfaceElevated
 import com.otakuzone.app.ui.theme.ZokoBadgeColor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("SourceLockedOrientationActivity")
 @Composable
 fun PlayerScreen(
@@ -113,13 +123,13 @@ fun PlayerScreen(
         }
     }
 
-    // Load Anime metadata (title, cover, episodes)
+    // Load Anime metadata
     LaunchedEffect(animeId) {
         val details = animeRepo.getAnimeDetails(animeId).getOrNull()
         if (details != null) {
             animeTitle = details.getDisplayName()
             animeCover = details.getBestCover()
-            totalEpisodes = details.episodes
+            totalEpisodes = details.episodes ?: details.nextAiringEpisode?.episode?.minus(1)
         }
     }
 
@@ -129,7 +139,6 @@ fun PlayerScreen(
         isPlayerLoading = true
 
         scope.launch {
-            // Check resume position in Room database
             val savedProgress = db.watchProgressDao().getProgress(animeId, currentEpisode)
             val startPositionMs = savedProgress?.positionMs ?: 0L
 
@@ -157,7 +166,7 @@ fun PlayerScreen(
                     snackbarHostState.showSnackbar("No available servers found for Episode $ep")
                 }
 
-                // Prefetch next episode's streams while user watches
+                // Prefetch next episode streams
                 streamRepo.prefetchNextEpisode(animeId, ep + 1, idMal)
             } else {
                 snackbarHostState.showSnackbar("Could not load streams for Episode $ep")
@@ -178,8 +187,6 @@ fun PlayerScreen(
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                // Server failure handling rule:
-                // Mark server failed and auto-jump to next server, showing message
                 val failedServer = selectedServer
                 if (failedServer != null) {
                     val nextServer = streamRepo.getNextFallbackServer(failedServer, servers, currentAudioMode)
@@ -205,7 +212,7 @@ fun PlayerScreen(
         }
     }
 
-    // Position progress tracking loop: saves second-precision resume point and pushes at 75%
+    // Position progress tracking loop: 75% auto mark watched + resume store
     LaunchedEffect(exoPlayer) {
         while (isActive) {
             delay(1000)
@@ -216,7 +223,6 @@ fun PlayerScreen(
                     val progressRatio = position.toFloat() / duration.toFloat()
                     val is75Percent = progressRatio >= 0.75f
 
-                    // Save local progress in Room
                     db.watchProgressDao().saveProgress(
                         WatchProgressEntity(
                             animeId = animeId,
@@ -229,7 +235,6 @@ fun PlayerScreen(
                         )
                     )
 
-                    // Auto-mark watched on AniList at 75%
                     if (is75Percent && !hasMarkedWatchedAt75) {
                         hasMarkedWatchedAt75 = true
                         syncRepo.syncWatchProgress(
@@ -245,7 +250,7 @@ fun PlayerScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = DarkBackground
+        containerColor = Background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -256,7 +261,7 @@ fun PlayerScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(if (isFullscreen) 16f / 9f else 16f / 9f)
+                    .aspectRatio(16f / 9f)
                     .background(Color.Black)
             ) {
                 AndroidView(
@@ -275,10 +280,14 @@ fun PlayerScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.5f)),
+                            .background(Color.Black.copy(alpha = 0.6f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = AccentPrimary)
+                        CircularProgressIndicator(
+                            color = AccentWhite,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(36.dp)
+                        )
                     }
                 }
 
@@ -299,9 +308,18 @@ fun PlayerScreen(
                             } else {
                                 onBackClick()
                             }
-                        }
+                        },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x99000000))
                     ) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Fg,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
 
                     IconButton(
@@ -312,91 +330,240 @@ fun PlayerScreen(
                             } else {
                                 ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                             }
-                        }
+                        },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x99000000))
                     ) {
                         Icon(
                             imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
                             contentDescription = "Fullscreen",
-                            tint = Color.White
+                            tint = Fg,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
             }
 
-            // Player Meta and Server Controls
+            // Anikage Player Bottom Bar & Episode Switcher
             if (!isFullscreen) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
+                    // Title & Episode
                     Text(
                         text = "$animeTitle — Episode $currentEpisode",
-                        color = TextPrimary,
-                        fontSize = 18.sp,
+                        color = Fg,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // Current Server and Quick Controls Row
+                    // Audio Mode Switcher (SUB / DUB) & Active Server Badge
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Server: ${selectedServer?.name ?: "None"} (${selectedServer?.format ?: ""})",
-                                color = TextSecondary,
-                                fontSize = 13.sp
-                            )
-                            if (selectedServer?.isDefault == true) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "DEFAULT",
-                                    color = ZokoBadgeColor,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
+                        // Quick SUB/DUB toggle chips
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (currentAudioMode == AudioMode.SUB) Color(0xFF1F2937) else SurfaceCard)
+                                    .border(
+                                        1.dp,
+                                        if (currentAudioMode == AudioMode.SUB) SubBadgeColor else BorderColor,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable {
+                                        currentAudioMode = AudioMode.SUB
+                                        val nextServer = streamRepo.pickInitialServer(servers, AudioMode.SUB)
+                                        if (nextServer != null) playStream(nextServer)
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.ClosedCaption,
+                                        contentDescription = "SUB",
+                                        tint = SubBadgeColor,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "SUB",
+                                        color = if (currentAudioMode == AudioMode.SUB) Fg else FgMuted,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (currentAudioMode == AudioMode.DUB) Color(0xFF064E3B) else SurfaceCard)
+                                    .border(
+                                        1.dp,
+                                        if (currentAudioMode == AudioMode.DUB) DubBadgeColor else BorderColor,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable {
+                                        currentAudioMode = AudioMode.DUB
+                                        val nextServer = streamRepo.pickInitialServer(servers, AudioMode.DUB)
+                                        if (nextServer != null) playStream(nextServer)
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Mic,
+                                        contentDescription = "DUB",
+                                        tint = DubBadgeColor,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "DUB",
+                                        color = if (currentAudioMode == AudioMode.DUB) Fg else FgMuted,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        // Prev / Next Episode Buttons
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            IconButton(
+                                onClick = { if (currentEpisode > 1) currentEpisode -= 1 },
+                                enabled = currentEpisode > 1,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SkipPrevious,
+                                    contentDescription = "Prev Ep",
+                                    tint = if (currentEpisode > 1) Fg else FgMuted
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { currentEpisode += 1 },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SkipNext,
+                                    contentDescription = "Next Ep",
+                                    tint = Fg
                                 )
                             }
                         }
-
-                        // Next Episode Button
-                        IconButton(
-                            onClick = {
-                                currentEpisode += 1
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.SkipNext,
-                                contentDescription = "Next Episode",
-                                tint = AccentPrimary
-                            )
-                        }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // Open Server Picker Button
-                    OutlinedButton(
-                        onClick = { showServerPicker = true },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    // Server Selection Button (exact Anikage card styling)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceCard)
+                            .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+                            .clickable { showServerPicker = true }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.Dns, contentDescription = null, tint = AccentPrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Dns,
+                                contentDescription = null,
+                                tint = AccentWhite,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Server: ${selectedServer?.name ?: "Auto"} (${selectedServer?.format ?: ""})",
+                                color = Fg,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            if (selectedServer?.isDefault == true) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(ZokoBadgeColor.copy(alpha = 0.2f))
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "DEFAULT",
+                                        color = ZokoBadgeColor,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
+                        }
+
                         Text(
-                            text = "Change Server (${servers.size} available)",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.SemiBold
+                            text = "Switch (${servers.size})",
+                            color = FgMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
                         )
+                    }
+
+                    // Episodes Quick Switcher Horizontal List
+                    val total = totalEpisodes ?: 24
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "Episodes",
+                        color = Fg,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items((1..total).toList()) { ep ->
+                            val isCurrent = ep == currentEpisode
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp, 36.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (isCurrent) AccentWhite else SurfaceCard)
+                                    .border(
+                                        1.dp,
+                                        if (isCurrent) AccentWhite else BorderColor,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable { currentEpisode = ep },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "$ep",
+                                    color = if (isCurrent) Color.Black else Fg,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isCurrent) FontWeight.ExtraBold else FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Server Picker BottomSheet
+        // Server Picker Sheet
         if (showServerPicker) {
             ServerPickerBottomSheet(
                 servers = servers,

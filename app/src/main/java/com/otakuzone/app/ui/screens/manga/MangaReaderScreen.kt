@@ -2,31 +2,27 @@ package com.otakuzone.app.ui.screens.manga
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -51,13 +47,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.otakuzone.app.OtakuZoneApplication
-import com.otakuzone.app.ui.theme.AccentPrimary
-import com.otakuzone.app.ui.theme.DarkBackground
-import com.otakuzone.app.ui.theme.DarkCardElevated
-import com.otakuzone.app.ui.theme.TextMuted
-import com.otakuzone.app.ui.theme.TextPrimary
-import com.otakuzone.app.ui.theme.TextSecondary
-import kotlinx.coroutines.launch
+import com.otakuzone.app.ui.theme.AccentWhite
+import com.otakuzone.app.ui.theme.BorderColor
+import com.otakuzone.app.ui.theme.Fg
+import com.otakuzone.app.ui.theme.FgMuted
 
 enum class ReaderMode {
     VERTICAL_WEBTOON,
@@ -100,7 +93,6 @@ fun MangaReaderScreen(
         val res = mangaRepo.getChapterImages(mangaSlug, chapterSlug)
         images = res.getOrNull() ?: emptyList()
 
-        // Update resume progress
         mangaRepo.saveReadingProgress(
             mangaSlug = mangaSlug,
             mangaTitle = mangaTitle,
@@ -119,11 +111,15 @@ fun MangaReaderScreen(
     ) {
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AccentPrimary)
+                CircularProgressIndicator(
+                    color = AccentWhite,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(36.dp)
+                )
             }
         } else if (images.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Failed to load chapter images", color = TextMuted)
+                Text("Failed to load chapter images", color = FgMuted, fontSize = 14.sp)
             }
         } else {
             Box(
@@ -168,48 +164,56 @@ fun MangaReaderScreen(
                 }
             }
 
-            // Top Bar Overlay (semi-transparent)
+            // Top Bar Overlay
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(12.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.Black.copy(alpha = 0.75f))
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xDD0A0A0A))
+                    .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 6.dp)
                     .align(Alignment.TopCenter),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     IconButton(onClick = onBackClick) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Fg,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                     Text(
                         text = chapterTitle,
-                        color = Color.White,
-                        fontSize = 14.sp,
+                        color = Fg,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1
                     )
                 }
 
-                // Mode switch toggle: Vertical (Webtoon) vs Horizontal (Paged)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    IconButton(
-                        onClick = {
-                            readerMode = if (readerMode == ReaderMode.VERTICAL_WEBTOON) {
-                                ReaderMode.HORIZONTAL_PAGED
-                            } else {
-                                ReaderMode.VERTICAL_WEBTOON
-                            }
+                // Mode switch toggle
+                IconButton(
+                    onClick = {
+                        readerMode = if (readerMode == ReaderMode.VERTICAL_WEBTOON) {
+                            ReaderMode.HORIZONTAL_PAGED
+                        } else {
+                            ReaderMode.VERTICAL_WEBTOON
                         }
-                    ) {
-                        Icon(
-                            imageVector = if (readerMode == ReaderMode.VERTICAL_WEBTOON) Icons.Default.SwapVert else Icons.Default.ViewCarousel,
-                            contentDescription = "Toggle mode",
-                            tint = AccentPrimary
-                        )
                     }
+                ) {
+                    Icon(
+                        imageVector = if (readerMode == ReaderMode.VERTICAL_WEBTOON) Icons.Default.SwapVert else Icons.Default.ViewCarousel,
+                        contentDescription = "Toggle mode",
+                        tint = AccentWhite,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
 
@@ -218,14 +222,15 @@ fun MangaReaderScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 16.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black.copy(alpha = 0.75f))
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color(0xDD0A0A0A))
+                    .border(1.dp, BorderColor, RoundedCornerShape(999.dp))
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = "${images.size} Panels",
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontSize = 12.sp,
+                    color = FgMuted,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
             }

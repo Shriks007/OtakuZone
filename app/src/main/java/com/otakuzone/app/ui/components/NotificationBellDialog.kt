@@ -1,6 +1,7 @@
 package com.otakuzone.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,17 +24,13 @@ import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,12 +39,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.otakuzone.app.data.models.AiringScheduleEntry
-import com.otakuzone.app.ui.theme.AccentPrimary
-import com.otakuzone.app.ui.theme.DarkCardElevated
-import com.otakuzone.app.ui.theme.DarkSurface
-import com.otakuzone.app.ui.theme.TextMuted
-import com.otakuzone.app.ui.theme.TextPrimary
-import com.otakuzone.app.ui.theme.TextSecondary
+import com.otakuzone.app.ui.theme.AccentWhite
+import com.otakuzone.app.ui.theme.BorderColor
+import com.otakuzone.app.ui.theme.Fg
+import com.otakuzone.app.ui.theme.FgMuted
+import com.otakuzone.app.ui.theme.SurfaceCard
+import com.otakuzone.app.ui.theme.SurfaceElevated
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -63,53 +60,47 @@ fun NotificationBellDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = DarkSurface,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
+            color = SurfaceElevated
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = null,
-                            tint = AccentPrimary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                    Column {
                         Text(
-                            text = "Airing Schedule & Alerts",
-                            color = TextPrimary,
+                            text = "Airing Notifications",
+                            color = Fg,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
                         )
+                        Text(
+                            text = "New episodes (24h window)",
+                            color = FgMuted,
+                            fontSize = 12.sp
+                        )
                     }
 
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                    IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = TextSecondary
+                            tint = FgMuted
                         )
                     }
                 }
 
-                Text(
-                    text = "Aired in the last 24h & upcoming in the next 24h",
-                    color = TextMuted,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
-                )
+                Spacer(modifier = Modifier.height(12.dp))
 
                 if (isLoading) {
                     Box(
@@ -118,19 +109,23 @@ fun NotificationBellDialog(
                             .height(160.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = AccentPrimary)
+                        CircularProgressIndicator(
+                            color = AccentWhite,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(32.dp)
+                        )
                     }
                 } else if (airingList.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(160.dp),
+                            .height(120.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No airing updates found in this window",
-                            color = TextMuted,
-                            fontSize = 14.sp
+                            text = "No episodes airing in this window",
+                            color = FgMuted,
+                            fontSize = 13.sp
                         )
                     }
                 } else {
@@ -140,25 +135,27 @@ fun NotificationBellDialog(
                             .height(340.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(airingList) { item ->
-                            val media = item.media ?: return@items
+                        items(airingList) { entry ->
+                            val media = entry.media ?: return@items
                             val animeId = media.id
-                            var subscribed by remember(animeId) { mutableStateOf(isSubscribed(animeId)) }
+                            val subscribed = isSubscribed(animeId)
 
-                            val now = System.currentTimeMillis() / 1000
-                            val hasAired = now >= item.airingAt
-                            val timeStr = formatTimestamp(item.airingAt * 1000)
+                            val timeStr = remember(entry.airingAt) {
+                                val sdf = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
+                                sdf.format(Date(entry.airingAt * 1000L))
+                            }
 
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(DarkCardElevated)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(SurfaceCard)
+                                    .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
                                     .clickable {
                                         onAnimeClick(animeId)
                                         onDismiss()
                                     }
-                                    .padding(10.dp),
+                                    .padding(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 AsyncImage(
@@ -166,7 +163,7 @@ fun NotificationBellDialog(
                                     contentDescription = media.getDisplayName(),
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
-                                        .size(48.dp, 64.dp)
+                                        .size(46.dp)
                                         .clip(RoundedCornerShape(6.dp))
                                 )
 
@@ -175,40 +172,29 @@ fun NotificationBellDialog(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = media.getDisplayName(),
-                                        color = TextPrimary,
+                                        color = Fg,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-
                                     Spacer(modifier = Modifier.height(2.dp))
-
                                     Text(
-                                        text = "Episode ${item.episode}",
-                                        color = AccentPrimary,
-                                        fontSize = 12.sp,
+                                        text = "Ep ${entry.episode} · $timeStr",
+                                        color = Color(0xFF22C55E),
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium
-                                    )
-
-                                    Text(
-                                        text = if (hasAired) "Aired: $timeStr" else "Airs: $timeStr",
-                                        color = TextMuted,
-                                        fontSize = 11.sp
                                     )
                                 }
 
                                 IconButton(
-                                    onClick = {
-                                        val newState = !subscribed
-                                        subscribed = newState
-                                        onToggleSubscribe(animeId, newState)
-                                    }
+                                    onClick = { onToggleSubscribe(animeId, !subscribed) },
+                                    modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
                                         imageVector = if (subscribed) Icons.Default.Notifications else Icons.Default.NotificationsOff,
-                                        contentDescription = "Toggle alert",
-                                        tint = if (subscribed) AccentPrimary else TextMuted,
+                                        contentDescription = if (subscribed) "Subscribed" else "Unsubscribed",
+                                        tint = if (subscribed) Color(0xFFFBBF24) else FgMuted,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -219,9 +205,4 @@ fun NotificationBellDialog(
             }
         }
     }
-}
-
-private fun formatTimestamp(millis: Long): String {
-    val sdf = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
-    return sdf.format(Date(millis))
 }

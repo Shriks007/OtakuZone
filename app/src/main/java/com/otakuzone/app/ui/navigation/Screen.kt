@@ -2,16 +2,16 @@ package com.otakuzone.app.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
     object Home : Screen("home", "Home", Icons.Default.Home)
-    object Search : Screen("search", "Search", Icons.Default.Search)
-    object Lists : Screen("lists", "My Lists", Icons.Default.List)
+    object Search : Screen("search", "Browse", Icons.Default.Explore)
+    object Lists : Screen("lists", "Lists", Icons.Default.ListAlt)
     object Manga : Screen("manga", "Manga", Icons.Default.Book)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
 

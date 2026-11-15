@@ -1,5 +1,6 @@
 package com.otakuzone.app.ui.navigation
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -12,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -29,11 +31,13 @@ import com.otakuzone.app.ui.screens.manga.MangaReaderScreen
 import com.otakuzone.app.ui.screens.player.PlayerScreen
 import com.otakuzone.app.ui.screens.search.SearchScreen
 import com.otakuzone.app.ui.screens.settings.SettingsScreen
-import com.otakuzone.app.ui.theme.AccentPrimary
-import com.otakuzone.app.ui.theme.DarkBackground
-import com.otakuzone.app.ui.theme.DarkSurface
-import com.otakuzone.app.ui.theme.TextMuted
-import com.otakuzone.app.ui.theme.TextPrimary
+import com.otakuzone.app.ui.theme.AccentWhite
+import com.otakuzone.app.ui.theme.Background
+import com.otakuzone.app.ui.theme.BorderColor
+import com.otakuzone.app.ui.theme.Fg
+import com.otakuzone.app.ui.theme.NavBackground
+import com.otakuzone.app.ui.theme.NavSelected
+import com.otakuzone.app.ui.theme.NavUnselected
 
 @Composable
 fun OtakuZoneNavGraph(
@@ -52,8 +56,10 @@ fun OtakuZoneNavGraph(
         bottomBar = {
             if (!hideBottomBar) {
                 NavigationBar(
-                    containerColor = DarkSurface,
-                    contentColor = TextPrimary
+                    containerColor = NavBackground,
+                    contentColor = Fg,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier.border(1.dp, BorderColor)
                 ) {
                     BottomNavItems.forEach { screen ->
                         val isSelected = currentRoute == screen.route
@@ -77,22 +83,22 @@ fun OtakuZoneNavGraph(
                                 Text(
                                     text = screen.title,
                                     fontSize = 11.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = AccentPrimary,
-                                selectedTextColor = AccentPrimary,
-                                unselectedIconColor = TextMuted,
-                                unselectedTextColor = TextMuted,
-                                indicatorColor = AccentPrimary.copy(alpha = 0.15f)
+                                selectedIconColor = NavSelected,
+                                selectedTextColor = NavSelected,
+                                unselectedIconColor = NavUnselected,
+                                unselectedTextColor = NavUnselected,
+                                indicatorColor = Color(0xFF222222)
                             )
                         )
                     }
                 }
             }
         },
-        containerColor = DarkBackground
+        containerColor = Background
     ) { paddingValues ->
         NavHost(
             navController = navController,
@@ -107,11 +113,14 @@ fun OtakuZoneNavGraph(
                     },
                     onContinueWatchClick = { animeId, episode, _ ->
                         navController.navigate(Screen.Player.createRoute(animeId, episode, null))
+                    },
+                    onSearchClick = {
+                        navController.navigate(Screen.Search.route)
                     }
                 )
             }
 
-            // Search
+            // Search / Browse
             composable(Screen.Search.route) {
                 SearchScreen(
                     onAnimeClick = { animeId ->

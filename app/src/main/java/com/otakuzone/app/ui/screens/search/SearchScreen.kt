@@ -1,6 +1,7 @@
 package com.otakuzone.app.ui.screens.search
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,23 +9,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -39,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -50,13 +52,14 @@ import com.otakuzone.app.OtakuZoneApplication
 import com.otakuzone.app.data.models.AniListMedia
 import com.otakuzone.app.data.models.MangaItem
 import com.otakuzone.app.ui.components.AnimeCard
-import com.otakuzone.app.ui.theme.AccentPrimary
-import com.otakuzone.app.ui.theme.DarkBackground
-import com.otakuzone.app.ui.theme.DarkCardElevated
-import com.otakuzone.app.ui.theme.DarkSurface
-import com.otakuzone.app.ui.theme.TextMuted
-import com.otakuzone.app.ui.theme.TextPrimary
-import com.otakuzone.app.ui.theme.TextSecondary
+import com.otakuzone.app.ui.theme.AccentWhite
+import com.otakuzone.app.ui.theme.Background
+import com.otakuzone.app.ui.theme.BorderColor
+import com.otakuzone.app.ui.theme.Fg
+import com.otakuzone.app.ui.theme.FgMuted
+import com.otakuzone.app.ui.theme.Surface
+import com.otakuzone.app.ui.theme.SurfaceCard
+import com.otakuzone.app.ui.theme.SurfaceInput
 import kotlinx.coroutines.launch
 
 enum class SearchMode {
@@ -77,16 +80,23 @@ fun SearchScreen(
 
     var query by remember { mutableStateOf("") }
     var searchMode by remember { mutableStateOf(SearchMode.ANIME) }
+    var selectedGenre by remember { mutableStateOf<String?>(null) }
     var animeResults by remember { mutableStateOf<List<AniListMedia>>(emptyList()) }
     var mangaResults by remember { mutableStateOf<List<MangaItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
 
+    val genres = listOf(
+        "Action", "Adventure", "Comedy", "Drama", "Fantasy",
+        "Romance", "Sci-Fi", "Slice of Life", "Supernatural", "Mystery"
+    )
+
     fun performSearch() {
-        if (query.isBlank()) return
+        if (query.isBlank() && selectedGenre == null) return
         scope.launch {
             isLoading = true
             if (searchMode == SearchMode.ANIME) {
-                animeResults = animeRepo.searchAnime(query).getOrNull() ?: emptyList()
+                val searchQuery = query.ifBlank { selectedGenre ?: "" }
+                animeResults = animeRepo.searchAnime(searchQuery).getOrNull() ?: emptyList()
             } else {
                 mangaResults = mangaRepo.searchManga(query).getOrNull() ?: emptyList()
             }
@@ -97,19 +107,21 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(Background)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
+        // Title
         Text(
-            text = "Discover",
-            color = TextPrimary,
+            text = "Browse",
+            color = Fg,
             fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.5.sp
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Search Input
+        // Search Input (Anikage style)
         OutlinedTextField(
             value = query,
             onValueChange = {
@@ -118,78 +130,107 @@ fun SearchScreen(
                     performSearch()
                 }
             },
-            placeholder = { Text("Search Anime or Manga title...", color = TextMuted) },
+            placeholder = { Text("Search title, character, or studio...", color = FgMuted, fontSize = 13.sp) },
             leadingIcon = {
-                Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = TextSecondary)
+                Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = FgMuted, modifier = Modifier.size(18.dp))
             },
             trailingIcon = {
                 if (query.isNotEmpty()) {
                     IconButton(onClick = { query = ""; animeResults = emptyList(); mangaResults = emptyList() }) {
-                        Icon(imageVector = Icons.Default.Clear, contentDescription = "Clear", tint = TextSecondary)
+                        Icon(imageVector = Icons.Default.Clear, contentDescription = "Clear", tint = FgMuted, modifier = Modifier.size(18.dp))
                     }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = DarkSurface,
-                unfocusedContainerColor = DarkSurface,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
-                cursorColor = AccentPrimary
+                focusedContainerColor = SurfaceInput,
+                unfocusedContainerColor = SurfaceInput,
+                focusedTextColor = Fg,
+                unfocusedTextColor = Fg,
+                cursorColor = AccentWhite,
+                focusedIndicatorColor = AccentWhite,
+                unfocusedIndicatorColor = BorderColor
             ),
             singleLine = true
         )
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Search Mode Tabs
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FilterChip(
-                selected = searchMode == SearchMode.ANIME,
-                onClick = {
-                    searchMode = SearchMode.ANIME
-                    performSearch()
-                },
-                label = { Text("Anime") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = AccentPrimary.copy(alpha = 0.25f),
-                    selectedLabelColor = AccentPrimary,
-                    containerColor = DarkSurface,
-                    labelColor = TextSecondary
-                )
-            )
-
-            FilterChip(
-                selected = searchMode == SearchMode.MANGA,
-                onClick = {
-                    searchMode = SearchMode.MANGA
-                    performSearch()
-                },
-                label = { Text("Manga") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = AccentPrimary.copy(alpha = 0.25f),
-                    selectedLabelColor = AccentPrimary,
-                    containerColor = DarkSurface,
-                    labelColor = TextSecondary
-                )
-            )
+        // Search Mode Tabs & Genre Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            listOf(SearchMode.ANIME to "Anime", SearchMode.MANGA to "Manga").forEach { (mode, title) ->
+                val isSelected = searchMode == mode
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSelected) AccentWhite else SurfaceCard)
+                        .border(1.dp, if (isSelected) AccentWhite else BorderColor, RoundedCornerShape(6.dp))
+                        .clickable {
+                            searchMode = mode
+                            performSearch()
+                        }
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = title,
+                        color = if (isSelected) Color.Black else Fg,
+                        fontSize = 12.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    )
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        if (searchMode == SearchMode.ANIME) {
+            Spacer(modifier = Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(genres) { genre ->
+                    val isSelected = selectedGenre == genre
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (isSelected) Color(0xFF262626) else SurfaceCard)
+                            .border(1.dp, if (isSelected) AccentWhite else BorderColor, RoundedCornerShape(4.dp))
+                            .clickable {
+                                selectedGenre = if (isSelected) null else genre
+                                performSearch()
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = genre,
+                            color = if (isSelected) Fg else FgMuted,
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AccentPrimary)
+                CircularProgressIndicator(
+                    color = AccentWhite,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(36.dp)
+                )
             }
         } else if (searchMode == SearchMode.ANIME) {
             if (animeResults.isEmpty() && query.isNotBlank()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No anime found for \"$query\"", color = TextMuted)
+                    Text("No anime found for \"$query\"", color = FgMuted, fontSize = 14.sp)
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 110.dp),
+                    columns = GridCells.Adaptive(minSize = 135.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
@@ -198,8 +239,7 @@ fun SearchScreen(
                         AnimeCard(
                             media = media,
                             onClick = { onAnimeClick(media.id) },
-                            cardWidth = 110,
-                            cardHeight = 160
+                            cardWidth = 140
                         )
                     }
                 }
@@ -207,17 +247,17 @@ fun SearchScreen(
         } else {
             if (mangaResults.isEmpty() && query.isNotBlank()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No manga found for \"$query\"", color = TextMuted)
+                    Text("No manga found for \"$query\"", color = FgMuted, fontSize = 14.sp)
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 110.dp),
+                    columns = GridCells.Adaptive(minSize = 135.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     items(mangaResults) { manga ->
-                        MangaSearchCard(
+                        AnikageMangaSearchCard(
                             manga = manga,
                             onClick = { onMangaClick(manga.slug) }
                         )
@@ -229,45 +269,59 @@ fun SearchScreen(
 }
 
 @Composable
-fun MangaSearchCard(
+fun AnikageMangaSearchCard(
     manga: MangaItem,
     onClick: () -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCardElevated)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
     ) {
-        Column {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.70f)
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+                .background(SurfaceCard)
+        ) {
             AsyncImage(
                 model = manga.cover,
                 contentDescription = manga.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                modifier = Modifier.fillMaxSize()
             )
-            Column(modifier = Modifier.padding(8.dp)) {
-                Text(
-                    text = manga.title,
-                    color = TextPrimary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (!manga.latestChapter.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
+
+            if (!manga.latestChapter.isNullOrBlank()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xCC000000))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
                     Text(
                         text = manga.latestChapter,
-                        color = AccentPrimary,
-                        fontSize = 10.sp
+                        color = Fg,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = manga.title,
+            color = Fg,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

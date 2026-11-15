@@ -1,14 +1,15 @@
 package com.otakuzone.app.ui.screens.manga
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -46,13 +48,12 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.otakuzone.app.OtakuZoneApplication
 import com.otakuzone.app.data.models.MangaDetails
-import com.otakuzone.app.ui.theme.AccentPrimary
-import com.otakuzone.app.ui.theme.DarkBackground
-import com.otakuzone.app.ui.theme.DarkCardElevated
-import com.otakuzone.app.ui.theme.DarkSurface
-import com.otakuzone.app.ui.theme.TextMuted
-import com.otakuzone.app.ui.theme.TextPrimary
-import com.otakuzone.app.ui.theme.TextSecondary
+import com.otakuzone.app.ui.theme.AccentWhite
+import com.otakuzone.app.ui.theme.Background
+import com.otakuzone.app.ui.theme.BorderColor
+import com.otakuzone.app.ui.theme.Fg
+import com.otakuzone.app.ui.theme.FgMuted
+import com.otakuzone.app.ui.theme.SurfaceCard
 import kotlinx.coroutines.launch
 
 @Composable
@@ -83,10 +84,14 @@ fun MangaDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(DarkBackground),
+                .background(Background),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = AccentPrimary)
+            CircularProgressIndicator(
+                color = AccentWhite,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(36.dp)
+            )
         }
         return
     }
@@ -95,10 +100,10 @@ fun MangaDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(DarkBackground),
+                .background(Background),
             contentAlignment = Alignment.Center
         ) {
-            Text("Failed to load manga details", color = TextMuted)
+            Text("Failed to load manga details", color = FgMuted)
         }
         return
     }
@@ -108,7 +113,7 @@ fun MangaDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(Background)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -126,10 +131,17 @@ fun MangaDetailScreen(
                     IconButton(
                         onClick = onBackClick,
                         modifier = Modifier
+                            .size(36.dp)
                             .clip(CircleShape)
-                            .background(DarkCardElevated)
+                            .background(SurfaceCard)
+                            .border(1.dp, BorderColor, CircleShape)
                     ) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Fg,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
 
                     IconButton(
@@ -153,13 +165,16 @@ fun MangaDetailScreen(
                             }
                         },
                         modifier = Modifier
+                            .size(36.dp)
                             .clip(CircleShape)
-                            .background(DarkCardElevated)
+                            .background(SurfaceCard)
+                            .border(1.dp, BorderColor, CircleShape)
                     ) {
                         Icon(
                             imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                             contentDescription = "Bookmark",
-                            tint = if (isBookmarked) AccentPrimary else TextSecondary
+                            tint = if (isBookmarked) AccentWhite else FgMuted,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -178,8 +193,10 @@ fun MangaDetailScreen(
                         contentDescription = item.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .size(110.dp, 160.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .width(110.dp)
+                            .aspectRatio(0.70f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
                     )
 
                     Spacer(modifier = Modifier.width(14.dp))
@@ -187,7 +204,7 @@ fun MangaDetailScreen(
                     Column {
                         Text(
                             text = item.title,
-                            color = TextPrimary,
+                            color = Fg,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 3,
@@ -197,22 +214,22 @@ fun MangaDetailScreen(
                         Spacer(modifier = Modifier.height(6.dp))
 
                         if (!item.status.isNullOrBlank()) {
-                            Text(text = "Status: ${item.status}", color = TextSecondary, fontSize = 12.sp)
+                            Text(text = "Status: ${item.status}", color = FgMuted, fontSize = 12.sp)
                         }
 
                         if (!item.authors.isNullOrEmpty()) {
                             Text(
                                 text = "Author: ${item.authors.joinToString()}",
-                                color = TextMuted,
+                                color = FgMuted,
                                 fontSize = 11.sp
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         Text(
                             text = "${chapters.size} Chapters",
-                            color = AccentPrimary,
+                            color = Fg,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -220,20 +237,28 @@ fun MangaDetailScreen(
                 }
             }
 
-            // Synopsis
+            // Synopsis Card
             if (!item.synopsis.isNullOrBlank() || !item.description.isNullOrBlank()) {
                 item {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceCard)
+                            .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+                            .padding(14.dp)
+                    ) {
                         Text(
                             text = "Synopsis",
-                            color = TextPrimary,
-                            fontSize = 16.sp,
+                            color = Fg,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = (item.synopsis ?: item.description ?: "").trim(),
-                            color = TextSecondary,
+                            color = FgMuted,
                             fontSize = 13.sp,
                             lineHeight = 18.sp
                         )
@@ -244,9 +269,9 @@ fun MangaDetailScreen(
             // Chapter List
             item {
                 Text(
-                    text = "Chapters (${chapters.size})",
-                    color = TextPrimary,
-                    fontSize = 16.sp,
+                    text = "Chapters",
+                    color = Fg,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
                 )
@@ -258,7 +283,8 @@ fun MangaDetailScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(DarkCardElevated)
+                        .background(SurfaceCard)
+                        .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
                         .clickable {
                             onChapterClick(slug, chapter.slug, item.title, chapter.title)
                         }
@@ -268,8 +294,8 @@ fun MangaDetailScreen(
                 ) {
                     Text(
                         text = chapter.title,
-                        color = TextPrimary,
-                        fontSize = 14.sp,
+                        color = Fg,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
@@ -279,7 +305,7 @@ fun MangaDetailScreen(
                     if (!chapter.uploaded.isNullOrBlank()) {
                         Text(
                             text = chapter.uploaded,
-                            color = TextMuted,
+                            color = FgMuted,
                             fontSize = 11.sp
                         )
                     }
